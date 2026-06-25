@@ -157,6 +157,8 @@ static void Compress(byte[] input, int level)
     {
         var span = output.GetSpan(256);
         status = compressor.WrapStream(remaining, span, out var consumed, out var written, isFinalBlock: false);
+        if (written == 0 && status == OperationStatus.DestinationTooSmall)
+            throw new InvalidOperationException($"WrapStream made no progress (level={level}, remaining={remaining.Length}, spanLen={span.Length})");
         output.Advance(written);
         remaining = remaining.Slice(consumed);
     }
@@ -166,6 +168,8 @@ static void Compress(byte[] input, int level)
     {
         var span = output.GetSpan(256);
         status = compressor.FlushStream(span, out var written, isFinalBlock: true);
+        if (written == 0 && status != OperationStatus.Done)
+            throw new InvalidOperationException($"FlushStream made no progress (level={level}, spanLen={span.Length}, status={status})");
         output.Advance(written);
     }
     while (status != OperationStatus.Done);
